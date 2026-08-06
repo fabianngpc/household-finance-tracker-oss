@@ -4,7 +4,8 @@
 on another, and a running "you owe me" argument on top? We've got you covered.
 One private ledger for two people sharing a household — track expenses in any
 currency, set budgets, automate recurring bills, and see exactly who owes whom.
-Everything stays on your machine.
+Log any expense straight from Telegram the second you spend it, so the ledger
+never falls behind. Everything stays on your machine.
 
 Under the hood, a FastAPI backend serves a built SvelteKit single-page app, with
 per-user categories, a shared dashboard, and monthly/yearly reports. An optional
@@ -29,8 +30,10 @@ Telegram bot lets you capture expenses from your phone.
 - **Recurring expenses** — define rules (e.g. rent, subscriptions) that generate
   entries automatically.
 - **Settle up** — track who owes whom on shared expenses.
-- **Telegram capture (optional)** — text an expense from your phone and it lands
-  in the ledger.
+- **Log from Telegram (optional)** — capture any expense straight from your
+  phone the moment it happens: text it, snap a receipt, split it with your
+  partner. No app to open, so you never forget to record a spend. Check your
+  balance, budgets, and recent activity from the same chat.
 - **Local & private** — SQLite on disk, LAN-only web server, no external
   services required for the core app.
 
