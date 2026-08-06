@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.finance.web — FastAPI web server (serves the built SvelteKit SPA + REST API).
+  User LaunchAgent (NOT a LaunchDaemon) — see DEPLOY.md for why.
+  Before install: fill __FILL_ME__ secrets below. Never commit real values.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.finance.web</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/YOUR_USERNAME/.local/bin/uv</string>
+    <string>run</string>
+    <string>uvicorn</string>
+    <string>app.main:app</string>
+    <string>--host</string>
+    <string>0.0.0.0</string>
+    <string>--port</string>
+    <string>8000</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/YOUR_USERNAME/household-finance-tracker</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/YOUR_USERNAME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>SECRET_KEY</key>
+    <string>__FILL_ME__</string>
+    <key>TELEGRAM_BOT_TOKEN</key>
+    <string>__FILL_ME__</string>
+    <key>FINANCE_DB_PATH</key>
+    <string>/Users/YOUR_USERNAME/FinanceAppData/finance.db</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <key>StandardOutPath</key>
+  <string>/Users/YOUR_USERNAME/Library/Logs/finance/web.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/YOUR_USERNAME/Library/Logs/finance/web.err.log</string>
+</dict>
+</plist>

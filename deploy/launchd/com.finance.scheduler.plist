@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.finance.scheduler — short-lived calendar job (app/scheduler.py): generates
+  due recurring occurrences + runs the once-daily backup+retention pipeline.
+  NEVER a long-running daemon — it is meant to exit every run, unlike the
+  other four always-running agents.
+
+  Fires hourly at :05 (recurring generation catch-up) plus once daily at 00:30
+  (the same run also does the daily backup, guarded by already_backed_up_today()
+  so it never double-runs even if the scheduler fires more than once per day).
+  Over-firing is harmless: generate_due() is idempotent via
+  UNIQUE(rule_id, period_key), and backup_with_retention() is skipped once a
+  finance_YYYYMMDD_*.db backup already exists for today.
+
+  User LaunchAgent (NOT a LaunchDaemon) — see DEPLOY.md for why.
+  Before install: fill __FILL_ME__ secrets below. Never commit real values.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.finance.scheduler</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/YOUR_USERNAME/.local/bin/uv</string>
+    <string>run</string>
+    <string>python</string>
+    <string>-m</string>
+    <string>app.scheduler</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/YOUR_USERNAME/household-finance-tracker</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/YOUR_USERNAME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>SECRET_KEY</key>
+    <string>__FILL_ME__</string>
+    <key>TELEGRAM_BOT_TOKEN</key>
+    <string>__FILL_ME__</string>
+    <key>FINANCE_DB_PATH</key>
+    <string>/Users/YOUR_USERNAME/FinanceAppData/finance.db</string>
+  </dict>
+
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict>
+      <key>Minute</key>
+      <integer>5</integer>
+    </dict>
+    <dict>
+      <key>Hour</key>
+      <integer>0</integer>
+      <key>Minute</key>
+      <integer>30</integer>
+    </dict>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/YOUR_USERNAME/Library/Logs/finance/scheduler.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/YOUR_USERNAME/Library/Logs/finance/scheduler.err.log</string>
+</dict>
+</plist>

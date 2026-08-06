@@ -1,0 +1,31 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Environment / secrets
+.env
+
+# Databases & backups (keep the empty dirs, ignore their contents)
+*.db
+*.db-wal
+*.db-shm
+data/*
+!data/.gitkeep
+backups/*
+!backups/.gitkeep
+
+# Frontend build artifacts
+web/build/
+web/node_modules/
+web/verify-screens/
+.svelte-kit/
+
+# Local tooling / planning (not part of the published project)
+.claude/
+.planning/
+validation/
+
+# macOS
+.DS_Store

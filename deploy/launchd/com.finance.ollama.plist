@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.finance.ollama — Ollama serve (Qwen3-VL/Hermes inference sidecar).
+  User LaunchAgent (NOT a LaunchDaemon) — Apple Vision OCR (bot/apple_vision_ocr.py)
+  and Ollama's model cache (~/.ollama) both need a real GUI login session.
+
+  IMPORTANT: verify the ollama binary path with `which ollama` before install.
+  This repo's dev machine resolved to /opt/homebrew/bin/ollama (Apple Silicon
+  Homebrew default). Intel Homebrew installs to /usr/local/bin/ollama instead —
+  update ProgramArguments below if the target Mac differs.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.finance.ollama</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/ollama</string>
+    <string>serve</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/YOUR_USERNAME/household-finance-tracker</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>HOME</key>
+    <string>/Users/YOUR_USERNAME</string>
+    <key>OLLAMA_HOST</key>
+    <string>127.0.0.1:11434</string>
+    <key>SECRET_KEY</key>
+    <string>__FILL_ME__</string>
+    <key>TELEGRAM_BOT_TOKEN</key>
+    <string>__FILL_ME__</string>
+    <key>FINANCE_DB_PATH</key>
+    <string>/Users/YOUR_USERNAME/FinanceAppData/finance.db</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <key>StandardOutPath</key>
+  <string>/Users/YOUR_USERNAME/Library/Logs/finance/ollama.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/YOUR_USERNAME/Library/Logs/finance/ollama.err.log</string>
+</dict>
+</plist>

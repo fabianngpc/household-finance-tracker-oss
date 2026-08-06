@@ -1,0 +1,33 @@
+[project]
+name = "household-finance-tracker"
+version = "0.1.0"
+description = "Self-hosted, LAN-only household finance tracker with multi-currency expenses, budgets, recurring rules, and an optional Telegram capture bot."
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "alembic==1.18.5",
+    "bcrypt==5.0.0",
+    "dateparser==1.4.1",
+    "fastapi==0.138.1",
+    "httpx==0.28.1",
+    "itsdangerous==2.2.0",
+    "ocrmac==1.0.1",
+    "pillow==12.2.0",
+    "pydantic>=2,<3",
+    "python-dateutil==2.9.0.post0",
+    "python-telegram-bot==22.8",
+    "sqlalchemy==2.0.51",
+    "uvicorn[standard]>=0.34",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=1.4.0",
+    "pytest-mock>=3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-x -q"
+asyncio_mode = "auto"
