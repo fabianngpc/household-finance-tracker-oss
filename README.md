@@ -1,13 +1,14 @@
 # Household Finance Tracker
 
-A self-hosted, LAN-only finance app for two people sharing a household. A
-FastAPI backend serves a built SvelteKit single-page app, with multi-currency
-expense tracking, per-user categories, a shared dashboard, monthly/yearly
-reports, budgets with alerts, recurring expenses, and settle-up between
-partners. An optional Telegram bot lets you capture expenses from your phone.
+**Tired of losing track of who paid for what?** Rent on one app, subscriptions
+on another, and a running "you owe me" argument on top? We've got you covered.
+One private ledger for two people sharing a household — track expenses in any
+currency, set budgets, automate recurring bills, and see exactly who owes whom.
+Everything stays on your machine.
 
-Everything runs on your own machine. There is no cloud, no third-party account,
-and no data leaves your network.
+Under the hood, a FastAPI backend serves a built SvelteKit single-page app, with
+per-user categories, a shared dashboard, and monthly/yearly reports. An optional
+Telegram bot lets you capture expenses from your phone.
 
 <p align="center">
   <img src="docs/screenshots/dashboard.png" alt="Dashboard — shared spending, settle-up balance, budget progress, and spend-by-category breakdown" width="840">
