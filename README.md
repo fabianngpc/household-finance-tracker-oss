@@ -45,6 +45,12 @@ and no data leaves your network.
 | ![Monthly total budget and per-category caps with progress bars](docs/screenshots/budgets.png) | ![Recurring rules that log expenses automatically on a schedule](docs/screenshots/recurring.png) |
 | Total cap plus per-category watch limits | Rules that log rent, subscriptions, etc. automatically |
 
+**Telegram capture** — log expenses by texting them from your phone:
+
+<p align="center">
+  <img src="docs/screenshots/telegram.png" alt="Telegram bot /start message explaining how to log expenses, snap receipts, split with a partner, and open the dashboard" width="620">
+</p>
+
 ---
 
 ## Requirements
