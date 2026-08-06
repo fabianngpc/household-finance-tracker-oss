@@ -9,6 +9,12 @@ partners. An optional Telegram bot lets you capture expenses from your phone.
 Everything runs on your own machine. There is no cloud, no third-party account,
 and no data leaves your network.
 
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" alt="Dashboard — shared spending, settle-up balance, budget progress, and spend-by-category breakdown" width="840">
+</p>
+
+> Screenshots use demo data with placeholder names (Maya & Daniel).
+
 ---
 
 ## Features
@@ -26,6 +32,18 @@ and no data leaves your network.
   in the ledger.
 - **Local & private** — SQLite on disk, LAN-only web server, no external
   services required for the core app.
+
+---
+
+## Screenshots
+
+| Expenses | Reports |
+|:--:|:--:|
+| ![Expense ledger with per-category colours and split badges](docs/screenshots/expenses.png) | ![Monthly and yearly reports with spend-by-category and category breakdown](docs/screenshots/reports.png) |
+| Multi-currency ledger with split-expense badges | Monthly & yearly breakdowns per person or combined |
+| **Budgets** | **Recurring** |
+| ![Monthly total budget and per-category caps with progress bars](docs/screenshots/budgets.png) | ![Recurring rules that log expenses automatically on a schedule](docs/screenshots/recurring.png) |
+| Total cap plus per-category watch limits | Rules that log rent, subscriptions, etc. automatically |
 
 ---
 
@@ -223,6 +241,36 @@ Run the frontend type checker:
 ```bash
 cd web && npx svelte-check
 ```
+
+---
+
+## Contributing
+
+Contributions are welcome — bug fixes, features, and docs alike.
+
+1. **Set up** — follow [Quick start](#quick-start) to get the app running
+   locally.
+2. **Branch** — create a feature branch off `main`.
+3. **Make your change** — keep it focused, and match the style of the
+   surrounding code.
+4. **Verify before you push** — both must pass:
+
+   ```bash
+   SECRET_KEY=test uv run pytest tests/ -q   # backend tests
+   cd web && npx svelte-check                # frontend types
+   ```
+
+5. **Open a pull request** — describe *what* changed and *why*. Screenshots
+   help for any UI change.
+
+A couple of things to keep in mind:
+
+- **Local-first by design.** The app is self-hosted and LAN-only, with no
+  cloud services or telemetry. Please keep new features working offline and
+  don't add external calls to the core app without discussion (the optional
+  Telegram bot and FX-rate lookup are the deliberate exceptions).
+- **Not sure where to start?** Open an issue to discuss the idea first — it
+  saves everyone time.
 
 ---
 
