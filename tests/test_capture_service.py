@@ -301,6 +301,36 @@ class TestApplyConfirmInput:
         assert returned.expense_id is not None
         assert db.query(Expense).filter_by(user_id=linked_user.id).count() == 1
 
+    def test_unsupported_stored_currency_self_heals(
+        self, db, linked_user, seeded_categories, capture_factory, mock_frankfurter
+    ):
+        """A capture holding an unsupported currency must still be completable.
+
+        Regression: a capture saved with currency="GUZ" (merchant "GUZMAN" read
+        as an ISO code) could never be confirmed — parse_to_minor_units raises
+        KeyError on the currency before it looks at the amount, so every reply
+        failed the same way and the confirm flow re-prompted forever.
+        """
+        from datetime import date
+        from app.services.capture import DEFAULT_CURRENCY, apply_confirm_input
+        from app.models.expense import Expense
+
+        capture = capture_factory(
+            user_id=linked_user.id,
+            status="pending_confirm",
+            confirm_step="amount",
+            currency="GUZ",
+            merchant="Guzman",
+            expense_date=date.today().isoformat(),
+        )
+
+        returned = apply_confirm_input(db, capture, "11.40")
+
+        assert returned.currency == DEFAULT_CURRENCY
+        assert returned.status == "done"
+        assert returned.expense_id is not None
+        assert db.query(Expense).filter_by(user_id=linked_user.id).count() == 1
+
     def test_invalid_amount_leaves_pending(self, db, linked_user, seeded_categories, capture_factory):
         from datetime import date
         from app.services.capture import apply_confirm_input

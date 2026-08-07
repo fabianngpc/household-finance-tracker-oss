@@ -22,7 +22,7 @@ from app.models.expense import Expense
 from app.models.job import Job
 from app.services.categories import resolve_category_for_hint, resolve_other_category_id
 from app.services.expenses import create_expense_from_data, update_expense
-from app.services.money import parse_to_minor_units
+from app.services.money import CURRENCY_DECIMALS, parse_to_minor_units
 from bot.extractor import ExtractionResult
 
 
@@ -131,6 +131,9 @@ CONF_AMOUNT_THRESHOLD = 0.7
 # Category must meet this threshold to use the AI hint; otherwise fall back to 'Other'.
 CONF_CATEGORY_THRESHOLD = 0.5
 
+# Used when a capture has no currency, or one the app doesn't support.
+DEFAULT_CURRENCY = "SGD"
+
 
 def _effective_confidence_amount(result: ExtractionResult) -> float:
     """Return the amount confidence for a result, with backward-compat fallback.
@@ -219,7 +222,16 @@ def apply_confirm_input(db: Session, capture: Capture, text: str) -> Capture:
             untouched (mirrors the /undo and phrase-handler guards).
     """
     if capture.confirm_step == "amount":
-        currency = capture.currency or "SGD"
+        # Self-heal an unsupported stored currency before parsing. A KeyError
+        # here comes from the currency, not the user's input, so without this
+        # the capture is unclearable: every amount the user types fails the same
+        # way and the bot re-prompts forever. Repairing it in place means the
+        # next reply — or even this one, on retry — can succeed.
+        currency = capture.currency or DEFAULT_CURRENCY
+        if currency not in CURRENCY_DECIMALS:
+            currency = DEFAULT_CURRENCY
+            capture.currency = currency
+
         try:
             parse_to_minor_units(text, currency)
         except (ValueError, KeyError) as exc:

@@ -20,6 +20,7 @@ from app.services.money import format_from_minor_units
 from app.services.balance import compute_balance
 from app.services.budgets import compute_budget_status
 from app.services.recurring import list_rules, next_run_date
+from app.models.capture import Capture
 from app.models.user import User
 
 _LINK_PROMPT = (
@@ -52,6 +53,7 @@ async def help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "  /help    — show this message\n"
             "  /recent  — list your most recent expenses\n"
             "  /undo    — delete your most recently logged expense\n"
+            "  /cancel  — discard an entry the bot is still asking about\n"
             "  /balance — who owes whom, per currency\n"
             "  /budget  — this month's budget vs. spend\n"
             "  /recurring — your recurring expenses\n"
@@ -229,6 +231,43 @@ async def undo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         db.close()
 
 
+async def cancel_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Abandon the caller's in-progress capture, if any.
+
+    text_handler routes every non-command message into the pending-confirm flow
+    before anything else, so a capture that can't be satisfied would otherwise
+    trap the conversation with no way out. This is that way out — it only ever
+    touches captures still awaiting confirmation, never a saved expense (use
+    /undo for those).
+    """
+    db = context.bot_data["db_factory"]()
+    try:
+        app_user = resolve_user_by_telegram_id(db, update.effective_user.id)
+        if app_user is None:
+            await update.message.reply_text(_LINK_PROMPT)
+            return
+
+        pending = (
+            db.query(Capture)
+            .filter_by(user_id=app_user.id, status="pending_confirm")
+            .order_by(Capture.created_at.desc())
+            .all()
+        )
+        if not pending:
+            await update.message.reply_text("Nothing to cancel.")
+            return
+
+        for capture in pending:
+            capture.status = "cancelled"
+        db.commit()
+
+        await update.message.reply_text(
+            "Cancelled. That entry wasn't saved — send it again when you're ready."
+        )
+    finally:
+        db.close()
+
+
 async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Bind this Telegram account to an app user via a one-time link code."""
     db = context.bot_data["db_factory"]()
@@ -265,6 +304,7 @@ def register_command_handlers(application, allowlist_filter) -> None:
     application.add_handler(CommandHandler("help", help_handler, filters=allowlist_filter))
     application.add_handler(CommandHandler("recent", recent_handler, filters=allowlist_filter))
     application.add_handler(CommandHandler("undo", undo_handler, filters=allowlist_filter))
+    application.add_handler(CommandHandler("cancel", cancel_handler, filters=allowlist_filter))
     application.add_handler(CommandHandler("balance", balance_handler, filters=allowlist_filter))
     application.add_handler(CommandHandler("budget", budget_handler, filters=allowlist_filter))
     application.add_handler(CommandHandler("recurring", recurring_handler, filters=allowlist_filter))

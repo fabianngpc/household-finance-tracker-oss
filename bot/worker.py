@@ -28,6 +28,7 @@ from bot.extractor import Extractor, StubExtractor
 from bot.hermes_extractor import build_extractor
 from app.services.capture import claim_next_job, process_capture, complete_job
 from app.models.capture import Capture
+from app.models.category import Category
 from app.models.user import User
 from app.database import engine, SessionLocal
 
@@ -60,7 +61,9 @@ async def process_one(bot, extractor: Extractor, engine, db_factory) -> bool:
 
         # Duplicate guard (Pitfall 4): re-processing an already-done capture
         # is a no-op — mark the stray job done and return without saving again.
-        if capture is None or capture.status == "done":
+        # Cancelled captures are treated the same way, so a /cancel that lands
+        # while a job is still queued can't resurrect the entry.
+        if capture is None or capture.status in ("done", "cancelled"):
             complete_job(db, job["job_id"], "done")
             return True
 
@@ -73,19 +76,34 @@ async def process_one(bot, extractor: Extractor, engine, db_factory) -> bool:
             merchant = capture.merchant or "expense"
             currency = capture.currency or "SGD"
             amount = capture.amount_str or ""
+            cat = (
+                db.get(Category, capture.category_id)
+                if capture.category_id is not None
+                else None
+            )
+            cat_name = cat.name if cat is not None else "Other"
             summary = (
-                f"Logged: {merchant} {currency} {amount} ({date_str}) [Other]. "
+                f"Logged: {merchant} {currency} {amount} ({date_str}) [{cat_name}]. "
                 "Reply 'undo' to remove this."
             )
 
-            reply_markup = None
+            rows: list[list[InlineKeyboardButton]] = []
             partner = db.query(User).filter(User.id != capture.user_id).first()
             if capture.expense_id is not None and partner is not None:
-                button = InlineKeyboardButton(
-                    f"Split 50/50 with {partner.display_name}",
-                    callback_data=f"split:{capture.expense_id}",
-                )
-                reply_markup = InlineKeyboardMarkup([[button]])
+                rows.append([
+                    InlineKeyboardButton(
+                        f"Split 50/50 with {partner.display_name}",
+                        callback_data=f"split:{capture.expense_id}",
+                    )
+                ])
+            if capture.expense_id is not None:
+                rows.append([
+                    InlineKeyboardButton(
+                        "✏️ Change category",
+                        callback_data=f"editcat:{capture.expense_id}",
+                    )
+                ])
+            reply_markup = InlineKeyboardMarkup(rows) if rows else None
 
             await bot.send_message(
                 chat_id=capture.telegram_chat_id,
@@ -213,8 +231,6 @@ async def run_worker(poll_interval: float = 1.0) -> None:
     poll_interval:
         Seconds to sleep when the queue is empty.
     """
-    from app.models.category import Category
-
     bot = Bot(token=BOT_TOKEN)
 
     # Load full category vocabulary for extractor hint resolution.

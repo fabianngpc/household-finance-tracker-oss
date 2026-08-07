@@ -374,3 +374,58 @@ async def test_vlm_extractor_raises_value_error_without_image_path():
     extractor = VLMExtractor("http://localhost:11434", "qwen3-vl:4b", CATEGORIES)
     with pytest.raises(ValueError):
         await extractor.extract("text only — no image")
+
+
+# ---------------------------------------------------------------------------
+# Currency validation (regression: merchant name misread as an ISO code)
+# ---------------------------------------------------------------------------
+
+
+async def test_unsupported_currency_falls_back_to_default(mocker):
+    """An unsupported currency code is replaced with the default, not persisted.
+
+    Regression: "11.4 GUZMAN dinner, food" made the model return currency="GUZ"
+    (it reads any 3-letter uppercase token as an ISO code). CURRENCY_DECIMALS
+    has no "GUZ", and parse_to_minor_units looks the currency up on its first
+    line — so the amount could never be parsed, the capture stuck in
+    pending_confirm, and every amount the user typed failed identically.
+    """
+    _patch_httpx(
+        mocker,
+        _raw_json(amount_str="11.4", currency="GUZ", merchant="Guzman"),
+    )
+
+    from bot.hermes_extractor import DEFAULT_CURRENCY, HermesExtractor
+
+    extractor = HermesExtractor("http://localhost:11434", "hermes3:8b", CATEGORIES)
+    result = await extractor.extract("11.4 GUZMAN dinner, food")
+
+    assert result.currency == DEFAULT_CURRENCY
+    # The amount must now survive validation rather than being nulled out.
+    assert result.amount_str == "11.4"
+    assert result.confidence_amount >= 0.9
+
+
+async def test_supported_currency_is_preserved(mocker):
+    """A real currency code is left alone by the fallback."""
+    _patch_httpx(mocker, _raw_json(amount_str="250", currency="THB"))
+
+    from bot.hermes_extractor import HermesExtractor
+
+    extractor = HermesExtractor("http://localhost:11434", "hermes3:8b", CATEGORIES)
+    result = await extractor.extract("250 baht lunch")
+
+    assert result.currency == "THB"
+    assert result.amount_str == "250"
+
+
+async def test_lowercase_currency_is_normalised(mocker):
+    """Case/whitespace variations resolve to the canonical code."""
+    _patch_httpx(mocker, _raw_json(amount_str="9.90", currency=" usd "))
+
+    from bot.hermes_extractor import HermesExtractor
+
+    extractor = HermesExtractor("http://localhost:11434", "hermes3:8b", CATEGORIES)
+    result = await extractor.extract("9.90 coffee")
+
+    assert result.currency == "USD"

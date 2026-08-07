@@ -34,6 +34,10 @@ from bot.extractor import Extractor, ExtractionResult
 from bot.ocr import apple_vision_ocr
 
 
+# Fallback when the model returns a currency the app doesn't support.
+DEFAULT_CURRENCY = "SGD"
+
+
 # ---------------------------------------------------------------------------
 # System prompt
 # ---------------------------------------------------------------------------
@@ -41,7 +45,10 @@ from bot.ocr import apple_vision_ocr
 SYSTEM_PROMPT_TEMPLATE = """You are an expense extraction assistant for a personal finance app.
 Extract the following from the user's message:
 - amount_str: the monetary amount as a string (e.g. "42.50"). null if not present.
-- currency: 3-letter ISO code. Default to "SGD" if not specified.
+- currency: one of SGD, USD, MYR, EUR, JPY, IDR, THB. Default to "SGD" if not
+  specified. Only use a code when the message actually names a currency or shows
+  a currency symbol — a merchant or person's name is NOT a currency, even when it
+  looks like a code (e.g. "GUZMAN" is a merchant, not "GUZ").
 - merchant: store or person paid. null if not present.
 - expense_date: the expense date. If the message states an explicit calendar date, output it as STRICT ISO 8601 YYYY-MM-DD (e.g. 2025-01-31) — NEVER MM/DD/YYYY or DD/MM/YYYY. If the message uses a relative word ("today", "yesterday", "this morning", "last Friday"), output that word VERBATIM — do NOT calculate the date yourself. If no date is mentioned, output "today". (Today is {today}.)
 - category_hint: one of [{categories}]. Default to "Other" if unsure.
@@ -167,16 +174,30 @@ def _to_extraction_result(
     Imports are local to avoid circular imports and to keep bot/ free of app.main.
     """
     import dateparser
-    from app.services.money import parse_to_minor_units
+    from app.services.money import CURRENCY_DECIMALS, parse_to_minor_units
+
+    # --- Currency validation ---
+    # MUST run before the amount check: parse_to_minor_units looks the currency
+    # up in CURRENCY_DECIMALS as its very first statement, so an unsupported
+    # code raises KeyError before the amount is even considered.
+    #
+    # The model reads any 3-letter uppercase token as an ISO code, so a merchant
+    # like "GUZMAN" becomes currency "GUZ". Persisting that to the capture row
+    # wedges the confirm flow permanently — every later amount the user types is
+    # re-parsed against the same bad currency and fails identically, with no way
+    # out. Unsupported codes therefore fall back to the default here.
+    currency = (raw.currency or "").strip().upper()
+    if currency not in CURRENCY_DECIMALS:
+        currency = DEFAULT_CURRENCY
 
     # --- Amount validation ---
     conf_amount = raw.confidence_amount
     amount_str = raw.amount_str
     if amount_str:
         if is_receipt:
-            amount_str = _normalize_receipt_amount(amount_str, raw.currency)
+            amount_str = _normalize_receipt_amount(amount_str, currency)
         try:
-            parse_to_minor_units(amount_str, raw.currency)
+            parse_to_minor_units(amount_str, currency)
             conf_amount = max(conf_amount, 0.9)  # parseable → HIGH
         except (ValueError, KeyError):
             amount_str = None
@@ -223,7 +244,7 @@ def _to_extraction_result(
 
     return ExtractionResult(
         amount_str=amount_str,
-        currency=raw.currency,
+        currency=currency,
         merchant=raw.merchant or None,
         expense_date=expense_date,
         category_hint=hint,
