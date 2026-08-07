@@ -77,6 +77,24 @@ def _matches_category_edit_phrase(text_lower: str) -> bool:
     )
 
 
+def _build_category_picker_markup(db, user_id: int, expense_id: int) -> InlineKeyboardMarkup:
+    """Build the inline category-picker keyboard for a given expense.
+
+    Two buttons per row, each carrying setcat:{expense_id}:{category_id} so
+    setcat_callback can apply the choice. Shared by the "change category"
+    text phrase and the "✏️ Change category" inline button (editcat_callback).
+    """
+    categories = list_categories_with_counts(db, user_id)
+    buttons = [
+        InlineKeyboardButton(
+            cat.name, callback_data=f"setcat:{expense_id}:{cat.id}"
+        )
+        for cat in categories
+    ]
+    rows = [buttons[i : i + 2] for i in range(0, len(buttons), 2)]
+    return InlineKeyboardMarkup(rows)
+
+
 # ---------------------------------------------------------------------------
 # Main handler
 # ---------------------------------------------------------------------------
@@ -174,15 +192,9 @@ async def text_handler(update, context) -> None:
                     )
                     return
 
-            categories = list_categories_with_counts(db, app_user.id)
-            buttons = [
-                InlineKeyboardButton(
-                    cat.name, callback_data=f"setcat:{post_save.expense_id}:{cat.id}"
-                )
-                for cat in categories
-            ]
-            rows = [buttons[i : i + 2] for i in range(0, len(buttons), 2)]
-            reply_markup = InlineKeyboardMarkup(rows)
+            reply_markup = _build_category_picker_markup(
+                db, app_user.id, post_save.expense_id
+            )
             await update.message.reply_text(
                 "Pick a new category:", reply_markup=reply_markup
             )
@@ -399,17 +411,63 @@ async def setcat_callback(update, context) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Edit-category callback (inline "✏️ Change category" button → show picker)
+# ---------------------------------------------------------------------------
+
+
+async def editcat_callback(update, context) -> None:
+    """Handle the "✏️ Change category" inline button tap.
+
+    callback_data format: "editcat:{expense_id}". Shows the category picker
+    (the same setcat:{expense_id}:{category_id} keyboard used by the text
+    phrase), so the user can fix the category in one more tap. Refuses shared
+    expenses (managed on the web), mirroring the text-phrase branch.
+    """
+    query = update.callback_query
+    await query.answer()
+    expense_id = int(query.data.split(":", 1)[1])
+
+    db = context.bot_data["db_factory"]()
+    try:
+        app_user = resolve_user_by_telegram_id(db, update.effective_user.id)
+        if app_user is None:
+            await query.message.reply_text(
+                "Please link your account first: /link <code>."
+            )
+            return
+
+        expense = (
+            db.query(Expense)
+            .filter(Expense.id == expense_id, Expense.user_id == app_user.id)
+            .first()
+        )
+        if expense is None:
+            await query.message.reply_text("Expense not found.")
+            return
+        if expense.shared_expense_id is not None:
+            await query.message.reply_text(
+                "That's a shared expense — manage it on the web."
+            )
+            return
+
+        reply_markup = _build_category_picker_markup(db, app_user.id, expense_id)
+        await query.message.reply_text("Pick a new category:", reply_markup=reply_markup)
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
 # Handler registration
 # ---------------------------------------------------------------------------
 
 
 def register_message_handlers(application, allowlist_filter) -> None:
-    """Register the text_handler, photo_handler, split_callback, and
-    setcat_callback on *application*.
+    """Register the text_handler, photo_handler, split_callback,
+    setcat_callback, and editcat_callback on *application*.
 
     Called by bot/main.py.  Uses the allowlist_filter from bot/main.py
     so only permitted Telegram user IDs reach the message/photo handlers.
-    split_callback/setcat_callback resolve app_user internally
+    The callbacks resolve app_user internally
     (CallbackQueryHandler cannot take the same User filter directly) so an
     unlinked/unknown caller is handled inside the callback rather than
     dropped at dispatch.
@@ -431,4 +489,7 @@ def register_message_handlers(application, allowlist_filter) -> None:
     )
     application.add_handler(
         CallbackQueryHandler(setcat_callback, pattern=r"^setcat:")
+    )
+    application.add_handler(
+        CallbackQueryHandler(editcat_callback, pattern=r"^editcat:")
     )
