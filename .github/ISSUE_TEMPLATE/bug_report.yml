@@ -1,0 +1,94 @@
+name: Bug report
+description: Something isn't working as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this.
+
+        **Please don't paste real financial data, your Telegram bot token, your
+        `SECRET_KEY`, or a Tailscale/LAN hostname.** Redact amounts and merchant
+        names in logs if you'd rather not share them — the shape of the problem
+        is usually enough.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what did you get instead?
+      placeholder: |
+        I sent "11.4 GUZMAN dinner, food" to the bot. It asked for the amount,
+        and kept asking no matter what I replied.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Send '...' to the bot
+        2. Reply '...'
+        3. See it re-prompt forever
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part?
+      options:
+        - Telegram bot — logging a typed expense
+        - Telegram bot — receipt photo / OCR
+        - Telegram bot — commands (/recent, /balance, /budget, …)
+        - Web app — dashboard, expenses, reports
+        - Web app — budgets or recurring rules
+        - Setup / install / migrations
+        - Always-on deployment (launchd)
+        - Something else
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: macOS version
+      placeholder: "15.5 (Apple Silicon)"
+    validations:
+      required: true
+
+  - type: input
+    id: extractor
+    attributes:
+      label: EXTRACTOR setting
+      description: From your `.env`. Leave as the default if you never set it.
+      placeholder: "hermes (default)"
+    validations:
+      required: true
+
+  - type: input
+    id: model
+    attributes:
+      label: Ollama model
+      description: Output of `ollama list` for the model in use. N/A if EXTRACTOR=stub.
+      placeholder: "hermes3:8b"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: |
+        From the worker especially — that's where extraction runs.
+        Terminal: whichever window is running `python -m bot.worker`.
+        launchd: `tail -n 50 ~/Library/Logs/finance/worker.err.log`
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: Ollama is running (`curl localhost:11434/api/tags` returns JSON), or I'm using `EXTRACTOR=stub`
+        - label: I've removed secrets and personal financial data from anything pasted above
+          required: true

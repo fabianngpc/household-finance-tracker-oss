@@ -1,0 +1,29 @@
+name: Feature request
+description: Suggest an improvement
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's the problem?
+      description: What are you trying to do that's awkward or impossible today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like instead?
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Design constraints
+      description: |
+        This app is local-first by design — self-hosted, LAN-only, no telemetry,
+        no cloud services. The Telegram bot and FX-rate lookup are the deliberate
+        exceptions.
+      options:
+        - label: This works without adding a cloud dependency to the core app
