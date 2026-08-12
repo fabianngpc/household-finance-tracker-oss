@@ -135,6 +135,18 @@ async def process_one(bot, extractor: Extractor, engine, db_factory) -> bool:
             complete_job(db, job["job_id"], "failed", error=str(exc))
         except Exception:
             pass
+        # Tell the user their capture failed. Without this the "Got it,
+        # processing..." ack is the last thing they ever see and a failure
+        # looks like an indefinite hang. Best-effort — a send failure here
+        # must not re-raise and kill the loop.
+        try:
+            if capture is not None and capture.telegram_chat_id is not None:
+                await bot.send_message(
+                    chat_id=capture.telegram_chat_id,
+                    text="Couldn't process that one — please try again.",
+                )
+        except Exception:
+            pass
         return True
 
     finally:

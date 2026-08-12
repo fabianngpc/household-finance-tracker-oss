@@ -277,6 +277,33 @@ async def test_photo_temp_file_deleted_after_failure(
     assert not fake_image.exists(), "temp image should be deleted even on extractor failure"
 
 
+async def test_failure_notifies_user_and_marks_failed(
+    db, db_engine, linked_user, capture_factory, job_factory
+):
+    """Regression: when processing raises, the user must be told — not left
+    on the 'Got it, processing...' ack forever. The capture is marked failed
+    and a 'Couldn't process' message is sent to their chat."""
+    capture = capture_factory(raw_message="lunch 90000 IDR", user_id=linked_user.id)
+    job_factory(capture_id=capture.id)
+    capture_id = capture.id
+    chat_id = capture.telegram_chat_id
+
+    class _BrokenExtractor:
+        async def extract(self, text, image_path=None):
+            raise RuntimeError("FX lookup failed")
+
+    bot = AsyncMock()
+    await _process(bot, _BrokenExtractor(), db_engine, db)
+
+    fresh_capture = db.get(Capture, capture_id)
+    assert fresh_capture.status == "failed"
+
+    bot.send_message.assert_awaited_once()
+    call_kwargs = bot.send_message.call_args.kwargs
+    assert call_kwargs["chat_id"] == chat_id
+    assert "Couldn't process" in call_kwargs["text"]
+
+
 async def test_text_capture_low_confidence_plain_prompt(
     db, db_engine, linked_user, capture_factory, job_factory
 ):

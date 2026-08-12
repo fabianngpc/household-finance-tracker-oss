@@ -6,8 +6,9 @@ Design rules:
 - SGD is the base currency; get_rate_for_date always short-circuits for SGD.
 - All lookups use the user-entered calendar date (occurred_on), never datetime.now().
 - Cache-first: query fx_rates before hitting the network.
-- One Frankfurter call stores ALL supported currencies (USD, MYR, EUR, JPY) so
-  subsequent lookups for other currencies on the same date are also cache hits.
+- One Frankfurter call stores ALL supported currencies (see SUPPORTED_SYMBOLS,
+  derived from CURRENCY_DECIMALS) so subsequent lookups for other currencies on
+  the same date are also cache hits.
 - ROUND_HALF_UP Decimal arithmetic for conversion; never float arithmetic.
 """
 
@@ -21,7 +22,15 @@ from app.models.fx_rate import FxRate
 from app.services.money import CURRENCY_DECIMALS
 
 FRANKFURTER_BASE = "https://api.frankfurter.dev/v1"
-SUPPORTED_SYMBOLS = "USD,MYR,EUR,JPY"  # SGD is the base; no SGD→SGD needed
+
+# Every non-base currency the app supports must be requested from Frankfurter,
+# or its rate lookup fails at save time. Derive the list from CURRENCY_DECIMALS
+# (the single source of truth for supported currencies) so the two can never
+# drift apart — adding a currency there is enough. SGD is the base, so it's
+# excluded (no SGD→SGD rate needed).
+SUPPORTED_SYMBOLS = ",".join(
+    sorted(c for c in CURRENCY_DECIMALS if c != "SGD")
+)
 
 
 def get_rate_for_date(

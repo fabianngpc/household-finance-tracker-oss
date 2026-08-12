@@ -13,7 +13,14 @@ from datetime import date
 
 import pytest
 
-from app.services.fx import get_rate_for_date, compute_base_amount_minor
+from unittest.mock import MagicMock
+
+from app.services.fx import (
+    SUPPORTED_SYMBOLS,
+    get_rate_for_date,
+    compute_base_amount_minor,
+)
+from app.services.money import CURRENCY_DECIMALS
 
 
 class TestGetRateForDateSGD:
@@ -94,6 +101,55 @@ class TestGetRateForDateForeignCurrency:
         get_rate_for_date(expense_date, "JPY", db)
         # Both lookups should have triggered at most one network call
         assert mock_frankfurter.call_count == 1
+
+
+class TestSupportedSymbolsCoverAllCurrencies:
+    """Regression: every supported currency must be requested from Frankfurter.
+
+    IDR and THB were listed in CURRENCY_DECIMALS (advertised as supported) but
+    omitted from SUPPORTED_SYMBOLS, so their rate was never fetched and every
+    IDR/THB capture failed the FX lookup — leaving the Telegram user stuck on
+    "Got it, processing..." with no error.
+    """
+
+    def test_symbols_match_currency_decimals_minus_sgd(self):
+        """SUPPORTED_SYMBOLS must equal the supported currencies except SGD."""
+        requested = set(SUPPORTED_SYMBOLS.split(","))
+        expected = {c for c in CURRENCY_DECIMALS if c != "SGD"}
+        assert requested == expected
+
+    def test_idr_and_thb_are_requested(self):
+        """The two currencies that were missing must now be present."""
+        requested = set(SUPPORTED_SYMBOLS.split(","))
+        assert "IDR" in requested
+        assert "THB" in requested
+
+    def test_idr_rate_fetched_and_returned(self, db, mocker):
+        """
+        With IDR requested, an IDR expense resolves a rate instead of raising
+        ValueError. Uses a Frankfurter-shaped response that includes IDR.
+        """
+        fake_response = MagicMock()
+        fake_response.raise_for_status = MagicMock()
+        fake_response.json.return_value = {
+            "amount": 1.0,
+            "base": "SGD",
+            "date": "2026-06-27",
+            "rates": {"USD": 0.74, "IDR": 13934, "THB": 25.86},
+        }
+        mocker.patch("httpx.get", return_value=fake_response)
+
+        rate, actual_date = get_rate_for_date(date(2026, 6, 27), "IDR", db)
+        assert rate == 13934
+        assert actual_date == date(2026, 6, 27)
+
+    def test_idr_conversion_math(self):
+        """
+        IDR has 0 decimal places. 100000 IDR at 13934 IDR/SGD:
+        100000 / 13934 ≈ S$7.1766… → 718 SGD cents (ROUND_HALF_UP).
+        """
+        result = compute_base_amount_minor(100000, "IDR", 13934)
+        assert result == 718
 
 
 class TestHistoricalStability:
