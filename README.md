@@ -403,7 +403,7 @@ A couple of things to keep in mind:
 
 ## Reporting a bug
 
-Open a [GitHub issue](https://github.com/fabianngpc/household-finance-tracker/issues/new/choose).
+Open a [GitHub issue](https://github.com/fabianngpc/household-finance-tracker-oss/issues/new/choose).
 The bug template asks for your macOS version, `EXTRACTOR` setting, Ollama model,
 and worker log — those four answers resolve most reports on the first reply.
 
